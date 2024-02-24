@@ -1,0 +1,92 @@
+//FORM SUBMISSON
+
+function doPost(e) {
+    if (!e) {
+        return ContentService.createTextOutput(JSON.stringify({ 'result': 'error', 'error': 'No data received' }))
+                             .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var sheetId = 'YOUR_SHEET_ID'; // Replace with your Google Sheet ID
+    var sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
+   
+    var formData = e.parameter || e.parameters;
+    var timestamp = new Date() || 'No timestamp'; // Get the timestamp from form data
+
+    // Check if the unique ID is already present in the sheet
+    var uniqueIdColumn = 3; // Assuming the unique ID is in the 3rd column
+    var uniqueId = formData.uniqueId;
+    var range = sheet.getRange(2, uniqueIdColumn, sheet.getLastRow(), 1); // Exclude header row
+    var values = range.getValues();
+    for (var i = 0; i < values.length; i++) {
+        if (values[i][0] === uniqueId) {
+            return ContentService.createTextOutput(JSON.stringify({ 'result': 'error', 'error': 'Product already registered' }))
+                                 .setMimeType(ContentService.MimeType.JSON);
+        }
+    }
+
+    var row = [
+        formData.productName || '', 
+        formData.color || '',
+        formData.uniqueId || '',
+        formData.name || '',
+        formData.phoneNumber || '',
+        formData.email || '',
+        formData.purchaseMode || '',
+        timestamp || ''
+    ];
+
+    sheet.appendRow(row);
+
+    
+    return HtmlService.createHtmlOutput('<html lang="en"><head><meta charset="UTF-8"><title>Registered Successfully</title></head><body style="text-align: center;"><h2>Your Product Registered Successfully</h2><p>If you are not redirected, please <a href="WEBSITE_URL">Click Here</a>.</p></body></html>');
+}
+
+
+
+
+//MYSQL CONNECTION
+function updateSheetFromMySQL() {
+  var jdbcUrl = 'jdbc:mysql://YOUR_MYSQL_HOST/YOUR_MYSQL_DATABASE'
+  var user = 'YOUR_MYSQL_USERNAME';
+  var password = 'YOUR_MYSQL_PASSWORD';
+  var sql = 'SELECT Unique_Code, REF, SKU, Product_Name, Colour, Batch_No, MRP, CATEGORY, CAPACITY, HEIGHT, WIDTH, DEPTH, Link FROM Product_Details'; // Adjust the table name and columns as needed
+
+  var conn = Jdbc.getConnection(jdbcUrl, user, password);
+  var stmt = conn.createStatement();
+  var results = stmt.executeQuery(sql);
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Product_Details");
+  var existingData = sheet.getDataRange().getValues();
+  var existingUniqueCodes = existingData.map(function(row) { return row[0]; }); // Assuming Unique_Code is in the 1st column
+
+  var newData = [];
+  while (results.next()) {
+    var uniqueCode = results.getString('Unique_Code');
+    if (existingUniqueCodes.indexOf(uniqueCode) === -1) { // Check if Unique_Code is not already in the sheet
+      newData.push([
+        uniqueCode, // Unique_Code
+        results.getString('REF'), // REF
+        results.getString('SKU'), // SKU
+        results.getString('Product_Name'), // Product_Name
+        results.getString('Colour'), // Colour
+        results.getString('Batch_No'),
+        results.getString('MRP'), // MRP
+        results.getString('CATEGORY'), // CATEGORY
+        results.getString('CAPACITY'), // CAPACITY
+        results.getString('HEIGHT'), // HEIGHT
+        results.getString('WIDTH'), // WIDTH
+        results.getString('DEPTH'), // DEPTH
+        results.getString('Link') // Link
+      ]);
+    }
+  }
+
+  if (newData.length > 0) {
+    // Appending new data to the Google Sheet
+    sheet.getRange(sheet.getLastRow() + 1, 1, newData.length, newData[0].length).setValues(newData);
+  }
+
+  results.close();
+  stmt.close();
+  conn.close();
+}
