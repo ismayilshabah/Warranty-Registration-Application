@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Registration</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" defer></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+        .form-section {
+            background-color: #fff;
+            margin: 10px auto;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .button {
+            display: inline-block;
+            background-color: #ff0000; /* Red background */
+            color: white; /* White text */
+            padding: 10px 20px;
+            text-align: center; /* Center text */
+            text-decoration: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 15px;
+            border: none; /* Removes any default border */
+            outline: none; /* Removes focus outline */
+        }
+
+        .button:hover {
+            background-color: #cc0000; /* Darker red on hover */
+        }
+        .bold-label {
+        font-weight: bold;
+        }
+        .required-indicator {
+            color: red;
+        }
+        
+        #qr-reader {
+            width: 100%;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+
+<form id="productRegistrationForm" action="YOUR_GOOGLE_SHEETS_WEB_URL" method="post">
+    <div class="form-section">
+        <h2>Product Details</h2>
+        <div id="qr-reader" style="display:none"></div> 
+        <button type="button" id="btn-scan-qr" class="button">Scan QR Code</button>
+        <p>Or enter details manually:</p>
+        <input type="hidden" id="productName" name="productName">
+        <input type="hidden" id="color" name="color">
+        <label>Unique Code:<span style="color: red;"> *</span></label>
+        <input type="text" id="uniqueId" name="uniqueId" required>
+        <h2>Personal Details</h2>
+        <label>Name:<span style="color: red;"> *</span></label>
+        <input type="text" id="name" name="name" required>
+        <label>Phone Number:<span style="color: red;"> *</span></label>
+        <input type="text" id="phoneNumber" name="phoneNumber" pattern="\d{10}|\d{11}" required title="Phone number must be 10 or 11 digits">
+        <label>Email:</label>
+        <input type="text" id="email" name="email">
+        <label>Purchase Mode:</label>
+        <select id="purchaseModeSelect" name="purchaseMode">
+            <option value="OPTION-1">Retail Shop</option>
+            <option value="OPTION-2">Online Store</option>
+        </select>
+        <input type="submit" value="Submit" class="button">
+    </div>
+</form>
+<script type="text/javascript">
+    $(document).ready(function () {
+        const btnScanQR = document.getElementById('btn-scan-qr');
+        let html5QrCode;
+
+        // Function to extract and use URL parameters
+        function useUrlParameters() {
+            function getParameterByName(name) {
+                name = name.replace(/[\[\]]/g, '\\$&');
+                var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                    results = regex.exec(window.location.href);
+                if (!results) return null;
+                if (!results[2]) return '';
+                return decodeURIComponent(results[2].replace(/\+/g, ' '));
+            }
+
+            $('#productName').val(getParameterByName('p'));
+            $('#color').val(getParameterByName('c'));
+            $('#uniqueId').val(getParameterByName('u'));
+        }
+
+        // Using jQuery's ready function to ensure DOM is fully loaded
+        $(document).ready(function () {
+            console.log("jQuery is ready.");
+            useUrlParameters(); // Call the function to use URL parameters
+        });
+
+        function onScanSuccess(decodedText, decodedResult) {
+            try {
+                const url = new URL(decodedText);
+                const params = new URLSearchParams(url.search);
+                $('#productName').val(params.get('p') || '');
+                $('#color').val(params.get('c') || '');
+                $('#uniqueId').val(params.get('u') || '');
+
+                html5QrCode.stop().then(() => {
+                    document.getElementById('qr-reader').style.display = 'none';
+                });
+            } catch (error) {
+                console.error('Error processing QR code content', error);
+            }
+        }
+
+        function onScanError(errorMessage) {
+            console.error(errorMessage);
+        }
+
+        btnScanQR.addEventListener('click', function () {
+            document.getElementById('qr-reader').style.display = 'block';
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("qr-reader");
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanError)
+                    .catch(err => {
+                        console.error('Failed to start QR scanner', err);
+                    });
+            } else {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('qr-reader').style.display = 'none';
+                }).catch(err => {
+                    console.error('Failed to stop QR scanner', err);
+                });
+            }
+        });
+    });
+</script>
+
+
+</body>
+</html>
